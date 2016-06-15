@@ -74,9 +74,11 @@ class SimpleVirus(object):
         maxBirthProb and clearProb values as this virus. Raises a
         NoChildException if this virus particle does not reproduce.               
         """
-
+        # probability of virus particle reproduce
         prob = self.maxBirthProb * (1 - popDensity)
         number = random.random()
+        # if virus reproduce create new instance instance
+        # if not raise an exception
         if prob > 0 and number <= prob:
             return SimpleVirus(self.maxBirthProb, self.clearProb)
         raise NoChildException
@@ -140,16 +142,21 @@ class Patient(object):
         returns: The total virus population at the end of the update (an
         integer)
         """
-        listOfViruses_copy = self.getViruses()
-        
-        for virus in listOfViruses_copy:
+        # get the list of viruses
+        listOfViruses = self.getViruses()
+
+        # determine whether each virus survives
+        for virus in listOfViruses:
             if virus.doesClear():
+                # if do not survive - remove it
                 self.viruses.remove(virus)
         newListOfViruses = copy.deepcopy(self.getViruses())
-        
+
+        #if survives try to reproduce
         for virusLeft in newListOfViruses:
             try:
                 virusOff = virusLeft.reproduce(float(self.getTotalPop())/self.getMaxPop())
+                # check if the population does not extend the maximum value
                 if self.getTotalPop() < self.getMaxPop():
                     self.viruses.append(virusOff)
             except NoChildException:
@@ -173,20 +180,27 @@ def simulationWithoutDrug(numViruses, maxPop, maxBirthProb, clearProb,
     numTrials: number of simulation runs to execute (an integer)
     """
     viruses = []
+    # populate the viruses list
     for i in range(numViruses):
         viruses.append(SimpleVirus(maxBirthProb, clearProb))
-            
+
+    # keep track of the total number of viruses         
     totalPop = []
+    
     for trial in range(numTrials):
+        # instantiate the patient
         patient = Patient(viruses, maxPop)
         
         if trial == 0:
+            # run simulation for 300 timesteps
             for timeStep in range(300):
                 totalPop.append(float(patient.update()))
         else:
+            # run simulation for 300 timesteps
             for timeStep in range(300):
                 totalPop[timeStep] += patient.update()
                 
+    # get average virus population            
     for element in totalPop:
         element = (element/numTrials)
     
@@ -263,34 +277,6 @@ class ResistantVirus(SimpleVirus):
         Stochastically determines whether this virus particle reproduces at a
         time step. Called by the update() method in the TreatedPatient class.
 
-        A virus particle will only reproduce if it is resistant to ALL the drugs
-        in the activeDrugs list. For example, if there are 2 drugs in the
-        activeDrugs list, and the virus particle is resistant to 1 or no drugs,
-        then it will NOT reproduce.
-
-        Hence, if the virus is resistant to all drugs
-        in activeDrugs, then the virus reproduces with probability:      
-
-        self.maxBirthProb * (1 - popDensity).                       
-
-        If this virus particle reproduces, then reproduce() creates and returns
-        the instance of the offspring ResistantVirus (which has the same
-        maxBirthProb and clearProb values as its parent). The offspring virus
-        will have the same maxBirthProb, clearProb, and mutProb as the parent.
-
-        For each drug resistance trait of the virus (i.e. each key of
-        self.resistances), the offspring has probability 1-mutProb of
-        inheriting that resistance trait from the parent, and probability
-        mutProb of switching that resistance trait in the offspring.       
-
-        For example, if a virus particle is resistant to guttagonol but not
-        srinol, and self.mutProb is 0.1, then there is a 10% chance that
-        that the offspring will lose resistance to guttagonol and a 90%
-        chance that the offspring will be resistant to guttagonol.
-        There is also a 10% chance that the offspring will gain resistance to
-        srinol and a 90% chance that the offspring will not be resistant to
-        srinol.
-
         popDensity: the population density (a float), defined as the current
         virus population divided by the maximum population       
 
@@ -302,13 +288,17 @@ class ResistantVirus(SimpleVirus):
         maxBirthProb and clearProb values as this virus. Raises a
         NoChildException if this virus particle does not reproduce.
         """
+        # get the resistances for this virus
         dic = self.getResistances()
         reproduces = True
-        
+
+
         for key, value in dic.items():
+            # check if is resistant to all drugs
             if (key in activeDrugs) and (value == False):
                 reproduces = False
                 break
+            # mutation - change the resistancy
             if random.random() <= self.getMutProb():
                     if value == True:
                         self.resistances[key] = False
@@ -317,7 +307,7 @@ class ResistantVirus(SimpleVirus):
                     
         if not reproduces:
             raise NoChildException
-                   
+        # if it meets the conditions - reproduce            
         if random.random() <= self.maxBirthProb * (1 - popDensity):          
             return ResistantVirus(self.maxBirthProb, self.clearProb, self.getResistances(), self.getMutProb())
         else:
@@ -382,9 +372,11 @@ class TreatedPatient(Patient):
         """
 
         virusesResistTotal = 0
-        
+
+        # check all the viruses if they are resistant to the drugs
         for virus in self.getViruses():
             oneVirusResistence = 0
+            #if empty all are resistant
             if drugResist == []:
                 return len(self.viruses)
             for drug in drugResist:
@@ -392,6 +384,7 @@ class TreatedPatient(Patient):
                     oneVirusResistence += 1
             if oneVirusResistence == len(drugResist):
                virusesResistTotal += 1
+               
         return virusesResistTotal    
              
 
@@ -414,12 +407,14 @@ class TreatedPatient(Patient):
 
         returns: The total virus population at the end of the update (an
         integer)
-        """       
+        """
+        #update virus population
         for virus in self.getViruses():
             if virus.doesClear():
                 self.viruses.remove(virus)
                 
         newListOfViruses = copy.deepcopy(self.getViruses())
+        # if virus survived check if it reproduces 
         for virusLeft in newListOfViruses:
             try:
                 virusOff = virusLeft.reproduce(float(self.getTotalPop())/self.getMaxPop(), self.getPrescriptions())
@@ -457,17 +452,21 @@ def simulationWithDrug(numViruses, maxPop, maxBirthProb, clearProb, resistances,
     totalPop = []
     totalPopGutt = []
     timesteps = 300
-    
+
     for trial in range(numTrials):
         viruses = []
+        # populate list with viruses
         for i in range(numViruses):
             viruses.append(ResistantVirus(maxBirthProb, clearProb, copy.deepcopy(resistances), mutProb))
-          
+
+        # instantiate the patient  
         patient = TreatedPatient(viruses, maxPop)
-    
+
+        # if the first trial    
         if trial == 0:
             for timeStep in range(timesteps):
                 if timeStep == 150:
+                    #apply the drug
                     patient.addPrescription("guttagonol")
                 totalPop.append(float(patient.update()))
                 totalPopGutt.append(float(patient.getResistPop(["guttagonol"])))
@@ -475,6 +474,7 @@ def simulationWithDrug(numViruses, maxPop, maxBirthProb, clearProb, resistances,
         else:
             for timeStep in range(timesteps):
                 if timeStep == 150:
+                    #apply the drug
                     patient.addPrescription("guttagonol")
                 totalPop[timeStep] += patient.update()
                 totalPopGutt[timeStep] += patient.getResistPop(["guttagonol"])
@@ -516,10 +516,13 @@ def simulationDelayedTreatment(timesteps, prescriptionStep, numTrials):
     totalPop = [0 for s in range(numTrials)]
 
     for trial in range(numTrials):
+        # populate list with viruses
         viruses = [ResistantVirus(0.1, 0.05, {'guttagonol': True}, 0.005) for i in range(100)]
+        # instantiate the patient
         patient = TreatedPatient(viruses, 1000)
         for timeStep in range(timesteps):
             if timeStep == prescriptionStep:
+                #apply the drug
                 patient.addPrescription("guttagonol")
             populationTrial = patient.update()
         totalPop[trial] = populationTrial
@@ -568,9 +571,13 @@ def simulationTwoDrugsDelayedTreatment(timesteps, prescriptionStep1, prescriptio
     prescriptionStep2
     
     for trial in range(numTrials):
+        # populate list with viruses
         viruses = [ResistantVirus(0.1, 0.05, {'guttagonol': False, 'grimpex': False}, 0.05) for i in range(100)]
+        # instantiate the patient
         patient = TreatedPatient(viruses, 1000)
+        
         for timeStep in range(timesteps):
+            #apply two drugs
             if timeStep == prescriptionStep1:
                 patient.addPrescription("guttagonol")
             if timeStep == prescriptionStep2:
